@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../api';
 
-const SellPage = ({ onListProduct }) => {
-  const [newProduct, setNewProduct] = useState({ 
-    name: '', 
-    price: '', 
-    description: '', 
-    stock: '' 
-  });
+const SellPage = ({ currentUser }) => {
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', description: '', stock: '' });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!newProduct.name || !newProduct.price || !newProduct.stock) {
-      alert('Please fill all fields!');
-      return;
+      return alert('Please fill all fields!');
     }
-    onListProduct(newProduct);
-    setNewProduct({ name: '', price: '', description: '', stock: '' });
+
+    try {
+      await apiFetch('/products', 'POST', newProduct, currentUser.token);
+      alert('Product listed successfully!');
+      setNewProduct({ name: '', price: '', description: '', stock: '' });
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   return (
@@ -26,29 +27,29 @@ const SellPage = ({ onListProduct }) => {
             type="text"
             placeholder="Product Name"
             value={newProduct.name}
-            onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
+            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
           <input
             type="number"
             placeholder="Price ($)"
             value={newProduct.price}
-            onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            onChange={e => setNewProduct({ ...newProduct, price: e.target.value })}
+            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
           <textarea
             placeholder="Description"
             value={newProduct.description}
-            onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            onChange={e => setNewProduct({ ...newProduct, description: e.target.value })}
+            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
             rows="4"
           />
           <input
             type="number"
             placeholder="Stock Quantity"
             value={newProduct.stock}
-            onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            onChange={e => setNewProduct({ ...newProduct, stock: e.target.value })}
+            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
           <button
             onClick={handleSubmit}

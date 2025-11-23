@@ -1,13 +1,15 @@
+//backend/routes/products.js
 const express = require('express');
 const router = express.Router();
 const oracledb = require('oracledb');
+const authenticateToken = require('../middleware/auth');
 
 // Get all products
 router.get('/', async (req, res) => {
   let connection;
   try {
     connection = await oracledb.getConnection();
-    
+
     const result = await connection.execute(
       `SELECT p.product_id, p.name, p.price, p.description, p.stock, 
               p.seller_id, u.username as seller_name, p.total_sold
@@ -16,7 +18,7 @@ router.get('/', async (req, res) => {
        WHERE p.stock > 0
        ORDER BY p.listed_at DESC`
     );
-    
+
     const products = result.rows.map(row => ({
       id: row[0],
       name: row[1],
@@ -27,27 +29,26 @@ router.get('/', async (req, res) => {
       sellerName: row[6],
       totalSold: row[7] || 0
     }));
-    
+
     res.json(products);
-    
+
   } catch (err) {
     console.error('Get products error:', err);
     res.status(500).json({ message: 'Server error' });
   } finally {
-    if (connection) {
-      await connection.close();
-    }
+    if (connection) await connection.close();
   }
 });
 
-// Create product
-router.post('/', async (req, res) => {
-  const { name, price, description, stock, sellerId } = req.body;
-  
+// Create product (only logged-in users)
+router.post('/', authenticateToken, async (req, res) => {
+  const { name, price, description, stock } = req.body;
+  const sellerId = req.user.userId;
+
   let connection;
   try {
     connection = await oracledb.getConnection();
-    
+
     const result = await connection.execute(
       `INSERT INTO products (product_id, name, price, description, stock, seller_id, total_sold)
        VALUES (product_seq.NEXTVAL, :name, :price, :description, :stock, :sellerId, 0)
@@ -61,9 +62,9 @@ router.post('/', async (req, res) => {
         id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
       }
     );
-    
+
     await connection.commit();
-    
+
     res.json({
       id: result.outBinds.id[0],
       name,
@@ -73,25 +74,23 @@ router.post('/', async (req, res) => {
       sellerId,
       totalSold: 0
     });
-    
+
   } catch (err) {
     console.error('Create product error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   } finally {
-    if (connection) {
-      await connection.close();
-    }
+    if (connection) await connection.close();
   }
 });
 
 // Get user's products
 router.get('/user/:userId', async (req, res) => {
   const { userId } = req.params;
-  
+
   let connection;
   try {
     connection = await oracledb.getConnection();
-    
+
     const result = await connection.execute(
       `SELECT product_id, name, price, description, stock, total_sold
        FROM products
@@ -99,7 +98,7 @@ router.get('/user/:userId', async (req, res) => {
        ORDER BY listed_at DESC`,
       [userId]
     );
-    
+
     const products = result.rows.map(row => ({
       id: row[0],
       name: row[1],
@@ -108,16 +107,14 @@ router.get('/user/:userId', async (req, res) => {
       stock: row[4],
       totalSold: row[5] || 0
     }));
-    
+
     res.json(products);
-    
+
   } catch (err) {
     console.error('Get user products error:', err);
     res.status(500).json({ message: 'Server error' });
   } finally {
-    if (connection) {
-      await connection.close();
-    }
+    if (connection) await connection.close();
   }
 });
 

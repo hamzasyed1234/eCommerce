@@ -1,6 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../api';
 
-const ShopPage = ({ products, currentUser, cart, onAddToCart, onRemoveFromCart, onCheckout }) => {
+const ShopPage = ({ currentUser }) => {
+  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const data = await apiFetch('/products');
+        setProducts(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const addToCart = (product) => {
+    if (product.sellerId === currentUser.id) return alert("You can't buy your own product!");
+    if (product.stock <= 0) return alert('Out of stock!');
+    setCart([...cart, product]);
+  };
+
+  const removeFromCart = (index) => setCart(cart.filter((_, i) => i !== index));
+
+  const checkout = async () => {
+    try {
+      await apiFetch('/purchase', 'POST', { items: cart }, currentUser.token);
+      alert('Purchase successful!');
+      setCart([]);
+      const updatedProducts = await apiFetch('/products');
+      setProducts(updatedProducts);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2">
@@ -8,7 +44,7 @@ const ShopPage = ({ products, currentUser, cart, onAddToCart, onRemoveFromCart, 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {products.filter(p => p.stock > 0).map(product => (
             <div key={product.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
-              <h3 className="text-xl font-bold text-gray-800 mb-2">{product.name}</h3>
+              <h3 className="text-xl font-bold mb-2">{product.name}</h3>
               <p className="text-gray-600 mb-4">{product.description}</p>
               <div className="flex items-center justify-between mb-4">
                 <span className="text-2xl font-bold text-green-600">${product.price}</span>
@@ -18,7 +54,7 @@ const ShopPage = ({ products, currentUser, cart, onAddToCart, onRemoveFromCart, 
                 Sold by: {product.sellerName}
               </div>
               <button
-                onClick={() => onAddToCart(product)}
+                onClick={() => addToCart(product)}
                 disabled={product.sellerId === currentUser.id}
                 className={`w-full py-2 rounded-lg font-semibold transition ${
                   product.sellerId === currentUser.id
@@ -48,7 +84,7 @@ const ShopPage = ({ products, currentUser, cart, onAddToCart, onRemoveFromCart, 
                       <p className="text-green-600 font-bold">${item.price}</p>
                     </div>
                     <button
-                      onClick={() => onRemoveFromCart(index)}
+                      onClick={() => removeFromCart(index)}
                       className="text-red-600 hover:text-red-700 text-sm"
                     >
                       Remove
@@ -64,7 +100,7 @@ const ShopPage = ({ products, currentUser, cart, onAddToCart, onRemoveFromCart, 
                   </span>
                 </div>
                 <button
-                  onClick={onCheckout}
+                  onClick={checkout}
                   className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
                 >
                   Checkout

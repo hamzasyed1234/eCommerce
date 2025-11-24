@@ -3,22 +3,21 @@ const express = require('express');
 const router = express.Router();
 const oracledb = require('oracledb');
 
-// Get all categories
+// Get all product categories
 router.get('/', async (req, res) => {
   let connection;
   try {
     connection = await oracledb.getConnection();
 
     const result = await connection.execute(
-      `SELECT category_id, name, description
-       FROM categories
-       ORDER BY name`
+      `SELECT CATEGORY_ID, CATEGORY_NAME
+       FROM product_categories
+       ORDER BY CATEGORY_NAME`
     );
 
     const categories = result.rows.map(row => ({
-      id: row[0],
-      name: row[1],
-      description: row[2]
+      CATEGORY_ID: row[0],
+      CATEGORY_NAME: row[1]
     }));
 
     res.json(categories);
@@ -33,18 +32,17 @@ router.get('/', async (req, res) => {
 
 // Create a new category
 router.post('/', async (req, res) => {
-  const { name, description } = req.body;
+  const { CATEGORY_NAME } = req.body; // Match your table column
   let connection;
   try {
     connection = await oracledb.getConnection();
 
     const result = await connection.execute(
-      `INSERT INTO categories (category_id, name, description)
-       VALUES (category_seq.NEXTVAL, :name, :description)
-       RETURNING category_id INTO :id`,
+      `INSERT INTO product_categories (CATEGORY_ID, CATEGORY_NAME)
+       VALUES (category_seq.NEXTVAL, :CATEGORY_NAME)
+       RETURNING CATEGORY_ID INTO :id`,
       {
-        name,
-        description,
+        CATEGORY_NAME,
         id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
       }
     );
@@ -53,9 +51,8 @@ router.post('/', async (req, res) => {
 
     res.json({
       message: 'Category created successfully',
-      categoryId: result.outBinds.id[0],
-      name,
-      description
+      CATEGORY_ID: result.outBinds.id[0],
+      CATEGORY_NAME
     });
 
   } catch (err) {
@@ -67,23 +64,23 @@ router.post('/', async (req, res) => {
 });
 
 // Update category
-router.put('/:categoryId', async (req, res) => {
-  const { categoryId } = req.params;
-  const { name, description } = req.body;
+router.put('/:CATEGORY_ID', async (req, res) => {
+  const { CATEGORY_ID } = req.params;
+  const { CATEGORY_NAME } = req.body;
   let connection;
   try {
     connection = await oracledb.getConnection();
 
     await connection.execute(
-      `UPDATE categories
-       SET name = :name, description = :description
-       WHERE category_id = :categoryId`,
-      { name, description, categoryId }
+      `UPDATE product_categories
+       SET CATEGORY_NAME = :CATEGORY_NAME
+       WHERE CATEGORY_ID = :CATEGORY_ID`,
+      { CATEGORY_NAME, CATEGORY_ID }
     );
 
     await connection.commit();
 
-    res.json({ message: 'Category updated successfully', categoryId, name, description });
+    res.json({ message: 'Category updated successfully', CATEGORY_ID, CATEGORY_NAME });
 
   } catch (err) {
     console.error('Update category error:', err);
@@ -94,20 +91,20 @@ router.put('/:categoryId', async (req, res) => {
 });
 
 // Delete category
-router.delete('/:categoryId', async (req, res) => {
-  const { categoryId } = req.params;
+router.delete('/:CATEGORY_ID', async (req, res) => {
+  const { CATEGORY_ID } = req.params;
   let connection;
   try {
     connection = await oracledb.getConnection();
 
     await connection.execute(
-      `DELETE FROM categories WHERE category_id = :categoryId`,
-      [categoryId]
+      `DELETE FROM product_categories WHERE CATEGORY_ID = :CATEGORY_ID`,
+      [CATEGORY_ID]
     );
 
     await connection.commit();
 
-    res.json({ message: 'Category deleted successfully', categoryId });
+    res.json({ message: 'Category deleted successfully', CATEGORY_ID });
 
   } catch (err) {
     console.error('Delete category error:', err);

@@ -11,8 +11,13 @@ export async function apiFetch(endpoint, method = "GET", body, token) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  const data = await response.json();
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}`);
+  }
+
   if (!response.ok) throw new Error(data.message || 'API error');
   return data;
 }
-

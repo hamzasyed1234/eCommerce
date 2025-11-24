@@ -134,12 +134,13 @@ Located in `src/pages/`:
   - Stock tracking and join with user data
 
 ### Transaction & Checkout Routes
-- **backend/routes/transactions.js** - Purchase and balance management:
-  - `POST /api/transactions/checkout` - Process product purchase
-  - `POST /api/transactions/update-balance` - Update user balance (for gambling)
-  - `GET /api/transactions` - Retrieve all transactions with buyer/seller/product details
-  - Handles stock updates and seller payments
-  - Supports transaction rollback on failure
+- **backend/routes/transactions.js** - Purchase and transaction processing (current implementation):
+  - `POST /api/transactions/checkout` - Process product purchase (requires authentication)
+    - Request body: `{ cartItems: [{ productId, name, price, quantity, sellerId }, ...] }`
+    - Verifies buyer's balance, updates product `stock` and `total_sold`, credits seller balances, inserts `transactions` records, deducts total from buyer, commits transaction.
+    - Returns: `{ message: 'Purchase successful', newBalance: <number> }` on success.
+  - Notes: The current `transactions.js` implementation focuses on `checkout`. Other endpoints such as `update-balance` or a global `GET /api/transactions` are not present in this file; add them if you need balance-only adjustments or an admin transaction listing.
+  - Error handling: rolls back and returns 400 for out-of-stock or insufficient funds, 500 for server errors.
 
 ### Shopping Cart Routes
 - **backend/routes/cart.js** - Shopping cart operations:

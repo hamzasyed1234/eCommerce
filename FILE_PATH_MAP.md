@@ -149,7 +149,7 @@ eCommerce/
 | `auth.js` | Authentication API endpoints (signup, login, balance check) with JWT tokens |
 | `products.js` | Product management endpoints (GET all products, POST create, GET user's products) |
 | `cart.js` | Shopping cart operations (GET items, POST add, PUT update, DELETE remove) |
-| `transactions.js` | Purchase checkout and balance updates with transaction logging |
+| `transactions.js` | Purchase checkout endpoint (`POST /api/transactions/checkout`) — updates stock, credits sellers, records transactions |
 | `categories.js` | Product category management (GET, POST, PUT, DELETE) |
 | `orders.js` | Order management with status tracking (GET, POST, PUT, DELETE) |
 | `reviews.js` | Product review system (GET by product, POST, PUT, DELETE) |

@@ -21,12 +21,11 @@ const LoginPage = ({ onLogin }) => {
 
     try {
       const endpoint = loginMode === 'login' ? '/auth/login' : '/auth/signup';
-      const user = await apiFetch(endpoint, 'POST', { username, password });
+      const response = await apiFetch(endpoint, 'POST', { username, password });
 
-      // Pass the user object to App.js
-      onLogin(user.user);
+      // response = { user: {id, username}, token }
+      onLogin({ ...response.user, token: response.token });
 
-      // Clear inputs
       setUsername('');
       setPassword('');
     } catch (err) {

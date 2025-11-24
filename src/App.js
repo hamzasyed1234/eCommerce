@@ -1,11 +1,10 @@
 // src/App.js
 import React, { useState } from 'react';
-import { Store, Dice1, TrendingUp, Package } from 'lucide-react';
+import { Store, TrendingUp, Package } from 'lucide-react';
 import Header from './components/Header';
 import LoginPage from './components/LoginPage';
 import ShopPage from './pages/ShopPage';
 import SellPage from './pages/SellPage';
-import GamblingPage from './pages/GamblingPage';
 import MyProductsPage from './pages/MyProductsPage';
 
 const App = () => {
@@ -17,7 +16,6 @@ const App = () => {
     setActiveTab('shop');
   };
 
-  // Show login page if no user is logged in
   if (!currentUser) {
     return <LoginPage onLogin={setCurrentUser} />;
   }
@@ -32,7 +30,9 @@ const App = () => {
             <button
               onClick={() => setActiveTab('shop')}
               className={`py-4 px-2 border-b-2 font-medium transition ${
-                activeTab === 'shop' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'shop'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <Store className="w-5 h-5 inline mr-2" />
@@ -41,25 +41,20 @@ const App = () => {
             <button
               onClick={() => setActiveTab('sell')}
               className={`py-4 px-2 border-b-2 font-medium transition ${
-                activeTab === 'sell' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'sell'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <TrendingUp className="w-5 h-5 inline mr-2" />
               Sell
             </button>
             <button
-              onClick={() => setActiveTab('gambling')}
-              className={`py-4 px-2 border-b-2 font-medium transition ${
-                activeTab === 'gambling' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Dice1 className="w-5 h-5 inline mr-2" />
-              Gambling
-            </button>
-            <button
               onClick={() => setActiveTab('myproducts')}
               className={`py-4 px-2 border-b-2 font-medium transition ${
-                activeTab === 'myproducts' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === 'myproducts'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               <Package className="w-5 h-5 inline mr-2" />
@@ -70,9 +65,10 @@ const App = () => {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {activeTab === 'shop' && <ShopPage currentUser={currentUser} />}
+        {activeTab === 'shop' && (
+          <ShopPage currentUser={currentUser} setCurrentUser={setCurrentUser} />
+        )}
         {activeTab === 'sell' && <SellPage currentUser={currentUser} />}
-        {activeTab === 'gambling' && <GamblingPage currentUser={currentUser} />}
         {activeTab === 'myproducts' && <MyProductsPage currentUser={currentUser} />}
       </main>
     </div>

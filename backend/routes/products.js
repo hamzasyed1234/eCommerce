@@ -1,25 +1,49 @@
-// backend/routes/products.js
 const express = require('express');
 const router = express.Router();
 const oracledb = require('oracledb');
 const authenticateToken = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
 
 // Get all products with category info
 router.get('/', async (req, res) => {
   let connection;
+  let currentUserId = null;
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.split(' ')[1];
+      const secret = process.env.JWT_SECRET || 'your_jwt_secret';
+      const decoded = jwt.verify(token, secret);
+      currentUserId = decoded.userId;
+    } catch (err) {
+      console.debug('Token invalid or expired, ignoring userId.');
+    }
+  }
+
   try {
     connection = await oracledb.getConnection();
 
-    const result = await connection.execute(
-      `SELECT p.product_id, p.name, p.price, p.description, p.stock, 
-              p.seller_id, u.username AS seller_name, p.total_sold,
-              p.category_id, c.category_name
-       FROM products p
-       JOIN users u ON p.seller_id = u.user_id
-       LEFT JOIN product_categories c ON p.category_id = c.category_id
-       WHERE p.stock > 0
-       ORDER BY p.listed_at DESC`
-    );
+    let query = `
+      SELECT p.product_id, p.name, p.price, p.description, p.stock,
+             p.seller_id, u.username AS seller_name, p.total_sold,
+             p.category_id, c.category_name
+      FROM products p
+      JOIN users u ON p.seller_id = u.user_id
+      LEFT JOIN product_categories c ON p.category_id = c.category_id
+      WHERE p.stock > 0
+    `;
+
+    const binds = [];
+
+    if (currentUserId) {
+      query += ` AND p.seller_id != :currentUserId`;
+      binds.push(currentUserId);
+    }
+
+    query += ` ORDER BY p.listed_at DESC`;
+
+    const result = await connection.execute(query, binds);
 
     const products = result.rows.map(row => ({
       id: row[0],
@@ -70,7 +94,6 @@ router.post('/', authenticateToken, async (req, res) => {
 
     await connection.commit();
 
-    // Fetch category name after insert
     let categoryName = null;
     if (categoryId) {
       const catResult = await connection.execute(
@@ -100,9 +123,11 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-// Get user's products with category info
-router.get('/user/:userId', async (req, res) => {
-  const { userId } = req.params;
+// ----------------------
+// NEW ROUTE: /mine
+// ----------------------
+router.get('/mine', authenticateToken, async (req, res) => {
+  const sellerId = req.user.userId;
   let connection;
 
   try {
@@ -113,9 +138,9 @@ router.get('/user/:userId', async (req, res) => {
               p.category_id, c.category_name
        FROM products p
        LEFT JOIN product_categories c ON p.category_id = c.category_id
-       WHERE p.seller_id = :userId
+       WHERE p.seller_id = :sellerId
        ORDER BY p.listed_at DESC`,
-      [userId]
+      [sellerId]
     );
 
     const products = result.rows.map(row => ({
@@ -132,8 +157,87 @@ router.get('/user/:userId', async (req, res) => {
     res.json(products);
 
   } catch (err) {
-    console.error('Get user products error:', err);
+    console.error('Get my products error:', err);
     res.status(500).json({ message: 'Server error' });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// ----------------------
+// Update product (logged-in users)
+// ----------------------
+router.put('/:productId', authenticateToken, async (req, res) => {
+  const { productId } = req.params;
+  const { name, price, description, stock, categoryId } = req.body;
+  const sellerId = req.user.userId;
+
+  let connection;
+  try {
+    connection = await oracledb.getConnection();
+
+    const check = await connection.execute(
+      `SELECT seller_id FROM products WHERE product_id = :productId`,
+      [productId]
+    );
+
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Product not found' });
+    if (check.rows[0][0] !== sellerId) return res.status(403).json({ message: 'Not authorized' });
+
+    await connection.execute(
+      `UPDATE products
+       SET name = :name,
+           price = :price,
+           description = :description,
+           stock = :stock,
+           category_id = :categoryId
+       WHERE product_id = :productId`,
+      { name, price, description, stock, categoryId: categoryId || null, productId }
+    );
+
+    await connection.commit();
+
+    res.json({ message: 'Product updated successfully' });
+
+  } catch (err) {
+    console.error('Update product error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// ----------------------
+// Delete product (logged-in users)
+// ----------------------
+router.delete('/:productId', authenticateToken, async (req, res) => {
+  const { productId } = req.params;
+  const sellerId = req.user.userId;
+
+  let connection;
+  try {
+    connection = await oracledb.getConnection();
+
+    const check = await connection.execute(
+      `SELECT seller_id FROM products WHERE product_id = :productId`,
+      [productId]
+    );
+
+    if (check.rows.length === 0) return res.status(404).json({ message: 'Product not found' });
+    if (check.rows[0][0] !== sellerId) return res.status(403).json({ message: 'Not authorized' });
+
+    await connection.execute(`DELETE FROM cart WHERE product_id = :productId`, [productId]);
+    await connection.execute(`DELETE FROM order_items WHERE product_id = :productId`, [productId]);
+    await connection.execute(`DELETE FROM transactions WHERE product_id = :productId`, [productId]);
+
+    await connection.execute(`DELETE FROM products WHERE product_id = :productId`, [productId]);
+
+    await connection.commit();
+    res.json({ message: 'Product deleted successfully' });
+
+  } catch (err) {
+    console.error('Delete product error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
   } finally {
     if (connection) await connection.close();
   }

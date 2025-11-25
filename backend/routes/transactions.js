@@ -16,7 +16,7 @@ router.post('/checkout', authenticateToken, async (req, res) => {
   try {
     connection = await oracledb.getConnection();
 
-    // Calculate total cost of all items
+    // Calculate total cost
     const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     // Check buyer balance
@@ -31,7 +31,7 @@ router.post('/checkout', authenticateToken, async (req, res) => {
 
     // Process each cart item
     for (const item of cartItems) {
-      // Update stock and total_sold atomically
+      // Update stock
       const updateResult = await connection.execute(
         `UPDATE products 
          SET stock = stock - :qty, total_sold = total_sold + :qty
@@ -55,6 +55,12 @@ router.post('/checkout', authenticateToken, async (req, res) => {
         `INSERT INTO transactions (transaction_id, buyer_id, seller_id, product_id, amount)
          VALUES (transaction_seq.NEXTVAL, :buyerId, :sellerId, :productId, :amount)`,
         { buyerId: userId, sellerId: item.sellerId, productId: item.productId, amount: item.price * item.quantity }
+      );
+
+      // Remove purchased item from cart using cart_id
+      await connection.execute(
+        `DELETE FROM cart WHERE cart_id = :cartId`,
+        { cartId: item.cartId }
       );
     }
 

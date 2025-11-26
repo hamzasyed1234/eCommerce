@@ -1,3 +1,4 @@
+//config/database.js
 const oracledb = require('oracledb');
 require('dotenv').config();
 
